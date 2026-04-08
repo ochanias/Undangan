@@ -13,13 +13,23 @@ export default function App() {
 
   useEffect(() => {
     const audio = document.getElementById("bg-music") as HTMLAudioElement;
-    const playMusic = () => {
-      audio?.play().catch(() => {});
+    if (!audio) return;
+
+    audio.play().catch(() => {});
+
+    const enableSound = () => {
+      audio.muted = false;
+      audio.play().catch(() => {});
     };
-    playMusic();
-    document.addEventListener("click", playMusic);
-    return () => document.removeEventListener("click", playMusic);
-  }, []);
+
+    document.addEventListener("click", enableSound);
+    document.addEventListener("scroll", enableSound);
+
+    return () => {
+      document.removeEventListener("click", enableSound);
+      document.removeEventListener("scroll", enableSound);
+    };
+  }, []);   
 
   if (submitted) {
     return (
@@ -54,8 +64,8 @@ export default function App() {
     <div className="relative font-[Poppins] text-gray-700 bg-gradient-to-b from-pink-100 via-pink-50 to-white overflow-x-hidden">
 
       {/* MUSIC */}
-      <audio id="bg-music" autoPlay loop>
-        <source src="/music/ingatlah-hari-ini.mp3" type="audio/mpeg" />
+      <audio id="bg-music" autoPlay loop muted>
+        <source src="/music/Kisah_Kasih.mp3" type="audio/mpeg" />
       </audio>
 
       {/* GLOBAL BACKGROUND */}
