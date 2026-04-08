@@ -1,10 +1,46 @@
 import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
+import { supabase } from "./supabase";
 
 export default function App() {
   const [rsvp, setRsvp] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (statusValue: string) => {
+    if (!name) return;
+    setLoading(true);
+    
+    // .select() penting agar Supabase mengembalikan data yang seketika dibuat (termasuk id & created_at)
+    const { data, error } = await supabase.from('rsvps').insert([{ name, status: statusValue }]).select();
+    setLoading(false);
+    
+    if (error) {
+      console.error(`Supabase Error (${statusValue}):`, error);
+      alert(`Gagal mengirim RSVP: ${error.message}`);
+    } else {
+      // Jika berhasil masuk db, kita ambil baris pertama datanya untuk dikirim ke Telegram
+      if (data && data[0]) {
+        const record = data[0];
+        const botToken = import.meta.env.VITE_TELEGRAM_BOT_TOKEN;
+        const chatId = import.meta.env.VITE_TELEGRAM_CHAT_ID;
+        
+        if (botToken && botToken !== "isi_dengan_token_bot_dari_botfather" && chatId) {
+          const text = `🎉 *RSVP UNDANGAN BARU!* 🎉\n\n*ID:* \`${record.id}\`\n*Nama:* ${record.name}\n*Kehadiran:* ${record.status.toUpperCase()}\n*Waktu:* ${new Date(record.created_at).toLocaleString('id-ID')}`;
+          
+          fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'Markdown' })
+          }).catch(err => console.error("Gagal kirim Notif Telegram:", err));
+        }
+      }
+
+      setRsvp(statusValue);
+      setSubmitted(true);
+    }
+  };
 
   const fadeUp = {
     hidden: { opacity: 0, y: 40 },
@@ -225,25 +261,19 @@ export default function App() {
 
             <div className="flex justify-center gap-6">
               <button
-                onClick={() => {
-                  if (!name) return;
-                  setRsvp("yes");
-                  setSubmitted(true);
-                }}
-                className="px-6 py-3 bg-white rounded-full shadow-lg"
+                onClick={() => handleSubmit('yes')}
+                disabled={loading}
+                className="px-6 py-3 bg-white rounded-full shadow-lg disabled:opacity-50"
               >
-                Yes
+                {loading ? 'Mengirim...' : 'Yes'}
               </button>
 
               <button
-                onClick={() => {
-                  if (!name) return;
-                  setRsvp("no");
-                  setSubmitted(true);
-                }}
-                className="px-6 py-3 bg-white rounded-full shadow-lg"
+                onClick={() => handleSubmit('no')}
+                disabled={loading}
+                className="px-6 py-3 bg-white rounded-full shadow-lg disabled:opacity-50"
               >
-                No
+                {loading ? 'Mengirim...' : 'No'}
               </button>
             </div>
           </div>
